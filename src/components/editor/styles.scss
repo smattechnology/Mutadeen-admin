@@ -1,0 +1,43 @@
+.tiptap ol {
+  list-style-type: decimal; // 1, 2, 3, ...
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.tiptap ul {
+  list-style-type: disc; // • bullets
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+
+.tiptap li {
+  margin: 0.25rem 0;
+}
+
+.tiptap {
+  h2 {
+    font-size: 1.5rem; // ~24px
+    font-weight: 700;
+    margin: 1.25rem 0 0.75rem;
+    color: #1f2937; // Tailwind gray-800
+  }
+
+  h3 {
+    font-size: 1.25rem; // ~20px
+    font-weight: 600;
+    margin: 1rem 0 0.5rem;
+    color: #374151; // Tailwind gray-700
+  }
+
+  h4 {
+    font-size: 1.125rem; // ~18px
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem;
+    color: #4b5563; // Tailwind gray-600
+  }
+}
+
+.tiptap a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
