@@ -34,9 +34,17 @@ import "./styles.scss";
 export default function BlogPostEditor() {
   // States
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [category, setCategory] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
-
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const [categories, setCategories] = useState([
+    "technology",
+    "health",
+    "lifestyle",
+  ]);
   // TipTap Editor Configuration
   const editor = useEditor({
     extensions: [
@@ -69,18 +77,39 @@ export default function BlogPostEditor() {
   ]);
 
   // Save Handler (console only for now)
-  const handleSave = () => {
-    const json = editor?.getJSON();
-    const html = editor?.getHTML();
+  const handleSave = async () => {
+    if (!editor) return;
+
+    const json = editor.getJSON();
+    const html = editor.getHTML();
+
+    if (!title.trim() || !slug.trim()) {
+      return alert("Title and slug are required.");
+    }
 
     const payload = {
       title,
-      content_html: html,
+      slug,
+      category,
       content_json: json,
+      // Optionally add content_html if needed:
+      // content_html: html,
     };
 
     console.log("📦 Blog Post Payload:", payload);
-    // TODO: Replace with API call
+
+    try {
+      const res = await fetch("http://localhost:1024/upload-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      console.log("✅ Saved Successfully:", data);
+    } catch (error) {
+      console.error("❌ Failed to save post:", error);
+    }
   };
 
   if (!editor) return null;
@@ -175,6 +204,33 @@ export default function BlogPostEditor() {
     },
   ];
 
+  const handleCategoryAdd = async () => {
+    if (!newCategory.trim()) {
+      return alert("Category name cannot be empty.");
+    }
+
+    try {
+      const res = await fetch("http://localhost:1024/update-category", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCategory }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        return alert(err.detail);
+      }
+
+      const updatedCategories = await res.json();
+      setCategories(updatedCategories);
+      setNewCategory("");
+      setShowCategoryModal(false);
+    } catch (error) {
+      console.error("❌ Failed to add category:", error);
+      alert("Failed to add category.");
+    }
+  };
+
   return (
     <div className="w-full h-full p-6 space-y-6 shadow rounded-xl flex flex-col bg-white text-black">
       {/* === Title Input === */}
@@ -187,7 +243,7 @@ export default function BlogPostEditor() {
       />
 
       {/* === Toolbar Buttons === */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="w-full flex flex-wrap items-center gap-2">
         {[...headingItems, ...markItems, ...alignmentItems, ...listItems].map(
           ({ name, icon: Icon, command, isActive }) => (
             <button
@@ -228,44 +284,111 @@ export default function BlogPostEditor() {
             <LinkIcon className="w-5 h-5" />
           )}
         </button>
+
+        {/* Category Selector with Add Button */}
+        <div className="border border-gray-300 rounded flex items-center overflow-hidden">
+          <select
+            name="category"
+            id="category"
+            className="p-2 bg-white text-black outline-none"
+            onChange={(e) => setCategory(e.target.value)}
+            value={category}
+          >
+            <option value="">Select post category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => setShowCategoryModal(true)}
+            className="px-4 py-2 bg-gray-800 text-white hover:bg-gray-900"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       {/* === Link Input Prompt === */}
       {showLinkInput && (
-        <div className="flex gap-2 items-center mb-2">
-          <input
-            type="url"
-            placeholder="Paste link here"
-            value={linkUrl}
-            onChange={(e) => setLinkUrl(e.target.value)}
-            className="p-2 border border-gray-300 rounded w-full text-black"
-          />
-          <button
-            onClick={() => {
-              if (linkUrl) {
-                editor
-                  .chain()
-                  .focus()
-                  .extendMarkRange("link")
-                  .setLink({ href: linkUrl })
-                  .run();
-              }
-              setLinkUrl("");
-              setShowLinkInput(false);
-            }}
-            className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900"
-          >
-            Add
-          </button>
-          <button
-            onClick={() => {
-              setLinkUrl("");
-              setShowLinkInput(false);
-            }}
-            className="px-2 py-2 bg-gray-200 text-black rounded hover:bg-gray-300"
-          >
-            Cancel
-          </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-sm shadow-lg space-y-4">
+            <h2 className="text-lg font-semibold text-black">Insert Link</h2>
+            <input
+              type="url"
+              placeholder="Paste link here"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded text-black"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  if (linkUrl) {
+                    editor
+                      .chain()
+                      .focus()
+                      .extendMarkRange("link")
+                      .setLink({ href: linkUrl })
+                      .run();
+                  }
+                  setLinkUrl("");
+                  setShowLinkInput(false);
+                }}
+                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setShowLinkInput(false);
+                  setLinkUrl("");
+                }}
+                className="px-4 py-2 bg-gray-200 text-black rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-sm shadow-lg space-y-4">
+            <h2 className="text-lg font-semibold text-black">
+              Add New Category
+            </h2>
+            <input
+              type="text"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="Enter category name"
+              className="w-full border border-gray-300 p-2 rounded text-black"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  handleCategoryAdd();
+                }}
+                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setNewCategory("");
+                  setShowCategoryModal(false);
+                }}
+                className="px-4 py-2 bg-gray-200 text-black rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -287,10 +410,10 @@ export default function BlogPostEditor() {
       {/* === Permalink + Save Button === */}
       <div className="flex gap-2">
         <input
-          id="permalink"
+          id="slug"
           type="text"
-          // value={permalink}
-          // onChange={(e) => setPermalink(slugify(e.target.value))}
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
           placeholder="Permalink (Slug)"
           className="w-full p-3 border border-gray-400 rounded focus:outline-none focus:ring-2 focus:ring-gray-600 bg-white text-black placeholder-gray-500"
         />
